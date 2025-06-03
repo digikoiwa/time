@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>時間割確認アプリ</title>
+<style>
+  body { font-family:"Segoe UI",sans-serif; text-align:center; padding:2rem; }
+  h1   { font-size:3rem; margin-bottom:.5rem; }
+  #now { font-size:5rem; font-weight:bold; margin:1rem 0; }
+  table{ margin:2rem auto; border-collapse:collapse; }
+  th,td{ border:1px solid #999; padding:.5rem 1rem; }
+  th  { background:#f0f0f0; }
+  /* 現在コマのハイライト */
+  .current { background:#ffeeba; }
+
+  /* トグルスイッチ */
+  .switch { position:relative; display:inline-block; width:60px; height:34px; }
+  .switch input { opacity:0; width:0; height:0; }
+  .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0;
+            background:#ccc; transition:.4s; border-radius:34px; }
+  .slider:before{ position:absolute; content:""; height:26px; width:26px;
+                  left:4px; bottom:4px; background:white; transition:.4s;
+                  border-radius:50%; }
+  input:checked + .slider{ background:#2196F3; }
+  input:checked + .slider:before{ transform:translateX(26px); }
+
+  /* ラベル */
+  #modeLabel{ font-size:1.2rem; margin-left:.5rem; vertical-align:middle; }
+</style>
+</head>
+<body>
+  <h1>現在は…</h1>
+  <div id="now">判定中</div>
+
+  <!-- トグルスイッチ -->
+  <label class="switch">
+    <input id="modeToggle" type="checkbox">
+    <span class="slider"></span>
+  </label>
+  <span id="modeLabel">通常授業</span>
+
+  <h2>小岩の時間割</h2>
+  <table id="tbl">
+    <thead><tr><th>限</th><th>開始</th><th>終了</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+/* ============ 通常授業時間割 ============ */
+const NORMAL_SCHEDULE = [
+  {period:"朝学習", start:"08:30", end:"08:40"},
+  {period:"SHR",   start:"08:40", end:"08:50"},
+  {period:"1限",   start:"08:50", end:"09:40"},
+  {period:"2限",   start:"09:50", end:"10:40"},
+  {period:"3限",   start:"10:50", end:"11:40"},
+  {period:"4限",   start:"11:50", end:"12:40"},
+  {period:"昼休み", start:"12:40", end:"13:20"},
+  {period:"5限",   start:"13:20", end:"14:10"},
+  {period:"6限",   start:"14:20", end:"15:10"},
+  /* 放課後 */
+  {period:"SHR",   start:"15:10", end:"15:20"},  // 最大10分想定
+  {period:"部活動等", start:"15:20", end:"17:00"},
+  {period:"完全下校", start:"17:00", end:"23:59"}
+];
+
+/* ============ 短縮授業時間割（後で手入力） ============ */
+const SHORT_SCHEDULE = [
+  {period:"朝学習", start:"00:00", end:"00:00"},
+  {period:"SHR",   start:"00:00", end:"00:00"},
+  {period:"1限",   start:"00:00", end:"00:00"},
+  {period:"2限",   start:"00:00", end:"00:00"},
+  {period:"3限",   start:"00:00", end:"00:00"},
+  {period:"4限",   start:"00:00", end:"00:00"},
+  {period:"昼休み", start:"00:00", end:"00:00"},
+  {period:"5限",   start:"00:00", end:"00:00"},
+  {period:"6限",   start:"00:00", end:"00:00"},
+  {period:"SHR",   start:"00:00", end:"00:00"},
+  {period:"部活動等", start:"00:00", end:"00:00"},
+  {period:"完全下校", start:"00:00", end:"23:59"}
+];
+
+/* ======== ここから共通処理 ======== */
+let currentSchedule = NORMAL_SCHEDULE;
+
+const nowDiv     = document.getElementById("now");
+const tbody      = document.querySelector("#tbl tbody");
+const modeToggle = document.getElementById("modeToggle");
+const modeLabel  = document.getElementById("modeLabel");
+
+/* "HH:MM" → 今日の日付の Date */
+function toToday(timeStr){
+  const [h,m] = timeStr.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+/* テーブル描画 */
+function renderTable(){
+  tbody.innerHTML = "";
+  currentSchedule.forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.dataset.period = r.period;  // ハイライト用
+    tr.innerHTML = `<td>${r.period}</td><td>${r.start}</td><td>${r.end}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* 行ハイライト */
+function highlight(period){
+  [...tbody.rows].forEach(tr=>{
+    tr.classList.toggle("current", tr.dataset.period === period);
+  });
+}
+
+/* 現在の period 更新 */
+function updateNow(){
+  const now = new Date();
+  const cur = currentSchedule.find(r=> now >= toToday(r.start) && now < toToday(r.end));
+  nowDiv.textContent = cur ? cur.period : "授業外";
+  highlight(cur ? cur.period : null);
+}
+
+/* モード切替 */
+modeToggle.addEventListener("change", ()=>{
+  currentSchedule = modeToggle.checked ? SHORT_SCHEDULE : NORMAL_SCHEDULE;
+  modeLabel.textContent = modeToggle.checked ? "短縮授業" : "通常授業";
+  renderTable();
+  updateNow();
+});
+
+/* 初期表示 */
+renderTable();
+updateNow();
+setInterval(updateNow, 1000);   // 毎秒更新
+</script>
+</body>
+</html>
